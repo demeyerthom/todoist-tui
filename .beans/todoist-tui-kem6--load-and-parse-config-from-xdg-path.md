@@ -1,10 +1,11 @@
 ---
 # todoist-tui-kem6
 title: Load and parse config from XDG path
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-05-03T15:08:49Z
-updated_at: 2026-05-03T15:08:49Z
+updated_at: 2026-05-05T17:58:45Z
 parent: todoist-tui-b52a
 blocked_by:
     - todoist-tui-unpx
@@ -42,3 +43,5 @@ func Load() (*Config, error) {
 - Load() parses valid TOML into Config struct
 - Missing config file triggers default creation then loading
 - Validation rejects empty token with ErrNoToken
+
+## Summary of Changes\n\nCreated internal/config/load.go with ConfigPath() returning XDG-compliant path using os.UserConfigDir (with fallback to /home/thomas/.config), and Load() that reads/parses config.toml, creates defaults if missing, and validates the token.

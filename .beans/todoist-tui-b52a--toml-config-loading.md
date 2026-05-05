@@ -1,11 +1,11 @@
 ---
 # todoist-tui-b52a
 title: TOML config loading
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-05-03T14:58:16Z
-updated_at: 2026-05-03T15:11:20Z
+updated_at: 2026-05-05T18:07:33Z
 parent: todoist-tui-j3br
 ---
 
@@ -22,3 +22,5 @@ Load config.toml with API token, keybindings, and theme settings. Uses pelletier
 
 ## Cross-feature dependency
 - Depends on F1 (project init) completing first
+
+## Summary of Changes\n\nAll 4 child tasks completed:\n1. Config structs defined with TOML tags (Config, AuthConfig, KeymapConfig, ThemeConfig, ErrNoToken, Validate)\n2. DefaultConfig() and WriteDefaultConfig() implemented with no-overwrite guard\n3. ConfigPath() and Load() implemented with XDG-compliant path resolution and auto-creation\n4. 10 table-driven tests covering all config functionality

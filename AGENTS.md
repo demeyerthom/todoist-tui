@@ -4,7 +4,7 @@
 
 ## Project status
 
-M0 (Skeleton) complete. Directory structure, dependencies, minimal entrypoint, and config template are in place. The project compiles and prints its version. Next milestone: M1 (Read-only core).
+M0 (Skeleton) in progress. Directory structure, dependencies, minimal entrypoint, and config template are in place. Config loading (`internal/config`) is complete: TOML parsing, XDG-compliant path resolution, default config generation, and validation. Next milestone: M1 (Read-only core).
 
 ## Stack & dependencies
 
@@ -29,6 +29,12 @@ Uses the **beans CLI** (not TodoWrite/todowrite). See `.beans.yml` and `.opencod
 ## Key conventions
 
 - Config format: TOML (`config.toml`)
+- Config path: XDG-compliant (`$XDG_CONFIG_HOME/todoist-tui/config.toml`), fallback to `$HOME/.config`
+- `Load()` auto-creates default config if missing; `WriteDefaultConfig` never overwrites existing files
+- TOML key for keybindings is `[keybindings]` (not `[keymap]`)
+- KeymapConfig sub-structs use `map[string]string` for flexible key-to-action mappings
+- ThemeConfig has 22 color fields matching `config.toml.example`
+- `ErrNoToken` sentinel error returned when auth token is empty
 - Temp IDs for optimistic updates use `tmp-` prefix
 - Sync token stored in bbolt; full sync on first launch (`sync_token=*`), incremental thereafter
 - Periodic sync every 30s in background
