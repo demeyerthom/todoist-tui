@@ -1,0 +1,93 @@
+# todoist-tui configuration
+# Copy this file to config.toml and fill in your values.
+
+# =============================================================================
+# Authentication
+# =============================================================================
+[auth]
+
+# Todoist personal API token (required).
+# Generate one at https://todoist.com/app/settings/integrations/developer
+token = ''
+
+# =============================================================================
+# Keybindings
+# =============================================================================
+# All keybindings use single characters or special keys.
+# Supported special keys: Enter, Tab, Esc, Space, Backspace, Delete,
+# Up, Down, Left, Right, Home, End, PageUp, PageDown, Insert
+# Modifiers: ctrl-<key>, alt-<key>
+
+# Normal mode — the default mode when the app starts.
+[keybindings.normal]
+up              = 'k'     # Navigate up in the current panel
+down            = 'j'     # Navigate down in the current panel
+enter           = 'Enter' # Expand or select the focused task
+complete        = 'x'     # Mark the focused task as complete
+delete          = 'd'     # Delete the focused task (with confirmation)
+quick_add       = 'o'     # Open the Quick Add dialog
+edit            = 'i'     # Open the edit form for the focused task
+search          = '/'     # Open the search/filter input
+switch_panel    = 'Tab'   # Cycle focus between sidebar, task list, and detail
+go_top          = 'g'     # Jump to the first item
+go_bottom       = 'G'     # Jump to the last item
+focus_sidebar   = '1'     # Jump focus to the sidebar panel
+focus_main      = '2'     # Jump focus to the task list panel
+focus_detail    = '3'     # Jump focus to the detail panel
+command_mode    = ':'     # Enter command mode
+escape          = 'Esc'   # Return to normal mode (from insert/command mode)
+
+# Insert mode — active when typing in forms (Quick Add, edit, search).
+[keybindings.insert]
+escape = 'Esc' # Exit insert mode and return to normal mode
+next   = 'Tab' # Move to the next form field
+
+# Command mode — active when typing commands after ':'.
+[keybindings.command]
+escape = 'Esc' # Exit command mode and return to normal mode
+
+# =============================================================================
+# Theme
+# =============================================================================
+# Colors can be standard terminal color names or hex values (#RRGGBB).
+# Standard names: black, red, green, yellow, blue, magenta, cyan, white,
+#                 brightblack, brightred, brightgreen, brightyellow,
+#                 brightblue, brightmagenta, brightcyan, brightwhite
+
+[theme]
+
+# Border styles for the active (focused) and inactive panels.
+active_border   = 'blue'
+inactive_border = 'brightblack'
+
+# Row highlighting in the task list.
+selected_row   = 'blue'
+hovered_row    = 'brightblack'
+
+# Text colors for different semantic roles.
+header       = 'brightwhite'
+normal_text  = 'white'
+muted_text   = 'brightblack'
+error        = 'red'
+success      = 'green'
+warning      = 'yellow'
+
+# Task-specific styling.
+task_due_today     = 'yellow'
+task_overdue       = 'red'
+task_completed     = 'brightblack'
+task_priority_high = 'red'
+task_priority_medium = 'yellow'
+task_priority_low  = 'blue'
+
+# Sidebar styling.
+sidebar_project_active = 'brightwhite'
+sidebar_project_label  = 'magenta'
+
+# Input field styling.
+input_border       = 'blue'
+input_border_error = 'red'
+input_placeholder  = 'brightblack'
+
+# Command bar styling.
+command_bar = 'brightblack'

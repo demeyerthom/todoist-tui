@@ -4,7 +4,7 @@
 
 ## Project status
 
-Pre-implementation. No Go code exists yet — only `PLAN.md` with architecture and milestone definitions. The project is at M0 (Skeleton).
+M0 (Skeleton) complete. Directory structure, dependencies, minimal entrypoint, and config template are in place. The project compiles and prints its version. Next milestone: M1 (Read-only core).
 
 ## Stack & dependencies
 

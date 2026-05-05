@@ -1,10 +1,11 @@
 ---
 # todoist-tui-4yfu
 title: Create directory structure and minimal main.go
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-05-03T15:08:03Z
-updated_at: 2026-05-03T15:08:03Z
+updated_at: 2026-05-05T15:32:26Z
 parent: todoist-tui-4wyv
 blocked_by:
     - todoist-tui-8sbd
@@ -25,3 +26,5 @@ Create the full directory structure per PLAN.md and a minimal cmd/todoist-tui/ma
 - All directories exist
 - 'go build ./...' succeeds
 - 'go vet ./...' passes
+
+## Summary of Changes\n\n- Created all 13 directories per PLAN.md structure\n- Added doc.go placeholder for each internal package\n- Created minimal cmd/todoist-tui/main.go that prints version\n- Verified go build and go vet both pass cleanly
