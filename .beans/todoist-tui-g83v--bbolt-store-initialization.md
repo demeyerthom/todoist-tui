@@ -1,11 +1,11 @@
 ---
 # todoist-tui-g83v
 title: bbolt store initialization
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-05-03T14:58:17Z
-updated_at: 2026-05-03T15:11:25Z
+updated_at: 2026-05-05T20:24:14Z
 parent: todoist-tui-j3br
 ---
 
@@ -24,3 +24,5 @@ Initialize bbolt embedded KV store (go.etcd.io/bbolt) for local storage. Stores 
 ## Cross-feature dependency
 - Depends on F1 (project init) completing first
 - F4 (sync client) and F5 (TUI) depend on this feature
+
+## Summary of Changes\n\nImplemented the full bbolt store initialization feature:\n\n1. **Store struct with Open/Close** (p2ij): StoreConfig, Store struct, New(), DBPath() with XDG compliance, Close(), ErrStoreNotOpen sentinel\n2. **Bucket definitions and CRUD helpers** (xbbs): ensureBuckets(), generic Put/Get/Delete/List, typed convenience methods for all 6 model types\n3. **SyncToken helpers** (cn66): GetSyncToken/SetSyncToken, GetLastSyncTime/SetLastSyncTime with RFC3339\n4. **Store tests** (y2ze): 18 table-driven subtests covering Open, Close, CRUD, SyncToken, LastSyncTime\n\nAll tests pass. go vet clean.
