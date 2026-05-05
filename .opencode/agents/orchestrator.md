@@ -151,11 +151,24 @@ Hand off the completed task to the **reviewer** subagent for review.
 
 You may execute tasks with no dependencies on each other in parallel.
 
+#### Step 3.3: Document
+
+After all tasks for the feature have been completed and approved, hand off the completed work to the **documenter** subagent.
+
+- Provide a summary of what was implemented
+- **The documenter must only update `README.md`** — do not create additional documentation files
+- The documenter should update relevant sections (Features, Architecture, Key Conventions, etc.) based on what changed
+
+After documentation, update the feature bean:
+```bash
+beans update --json <feature-id> -s completed --body-append "## Summary of Changes\n\nOverview of the full feature implementation..."
+```
+
 ### Step 4: User approval
 
 #### Step 4.1: Request user approval
 
-Once all tasks are completed, present the completed work to the user for approval.
+Once all coding tasks and documentation are complete, present the full deliverable (code changes + README updates) to the user for approval.
 
 Show summaries from the completed task beans:
 ```bash
@@ -176,30 +189,12 @@ Create new task beans under the same feature for each change request:
 beans create --json "Change: Title" -t task -s in-progress --parent <feature-id> -d "Change description..."
 ```
 
-Hand off each change to the **coder** subagent. Once done, review and mark completed as in Step 3.2.
+Hand off each change to the appropriate subagent. Code changes go to the **coder**, documentation changes go to the **documenter**. Once done, review and mark completed as in Step 3.2. After all changes are implemented, re-run Step 3.3 (document) if code changes warrant README updates.
 
 1. Request approval from the user again
 2. Repeat until the user approves
 
-### Step 5: Document
-
-Hand off the completed work to the **documenter** subagent to update any documentation as needed.
-
-- Provide a summary of what was implemented
-
-After documentation, update the feature bean:
-```bash
-beans update --json <feature-id> -s completed --body-append "## Summary of Changes\n\nOverview of the full feature implementation..."
-```
-
-#### Step 5.1: Request user approval
-
-After documentation is complete, present it to the user for approval.
-
-- If the user requests changes, have the documenter address them
-- If the user approves, proceed to Step 6
-
-### Step 6: Complete
+### Step 5: Complete
 
 1. Commit all changes including bean files:
    ```bash

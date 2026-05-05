@@ -2,9 +2,9 @@
 
 A terminal UI for [Todoist](https://todoist.com), built with Go and the [Charm](https://charm.sh) stack.
 
-## Status
+## Features
 
-**M0 (Skeleton)** — project initialized with directory structure, dependencies, and minimal entrypoint. Not yet functional.
+*TBD*
 
 ## Requirements
 
