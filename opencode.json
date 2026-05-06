@@ -22,5 +22,25 @@
     "documenter": {
       "model": "opencode-go/deepseek-v4-pro"
     }
+  },
+  "mcp": {
+    "mcp-github": {
+      "enabled": false
+    },
+    "mcp-context7": {
+      "enabled": true,
+    },
+    "mcp-ghgrep": {
+      "enabled": true,
+    },
+    "mcp-todoist": {
+      "enabled": false,
+    },
+    "mcp-websearch": {
+      "enabled": true,
+    },
+    "mcp-signoz": {
+      "enabled": false,
+    }
   }
 }

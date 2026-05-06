@@ -6,7 +6,12 @@ A terminal UI for [Todoist](https://todoist.com), built with Go and the [Charm](
 
 - **3-panel TUI** — sidebar (projects, filters, labels), main task list, and detail panel with lipgloss rounded borders and responsive layout
 - **Focus cycling** — Tab / Shift+Tab to rotate between panels; active border highlight from theme config
-- **Vim-style modal keybindings** — Normal, Insert, and Command modes via `internal/ui/keymap`
+- **Vim-style modal keybindings** — Normal, Insert, and Command modes via `internal/ui/keymap`, with `KeyFor()` lookup and configurable per-mode key-to-action mappings
+- **Command mode with quit commands** — `:` enters command mode, `:q` / `:quit` exits the application, unknown commands show an error banner; command bar rendered at the bottom of the view with `Theme.CommandBar` color
+- **Per-mode Ctrl+C behavior** — Normal/Insert: immediate quit; Command: cancel back to Normal mode
+- **Keystroke accumulation** — in command mode, printable characters accumulate in `commandBuf`; Backspace deletes last character (or cancels if already empty); Enter executes; Esc cancels
+- **Graceful cleanup** — `Model.Cleanup()` closes the bbolt store; called in `main.go` on both successful exit and error paths
+- **Full entrypoint wiring** — `main.go` chains config → store → sync client → Bubbletea program with alt screen, version banner
 - **Async full sync on startup** — `Init()` launches a background full sync against the Todoist Sync API v9
 - **Error banner** — sync failures rendered at the top of the view with the theme's error color
 - **Optimistic updates** — local changes use `tmp-` prefixed temp IDs, resolved on sync
@@ -86,9 +91,33 @@ internal/
     detail/          # Task detail and edit panel
     quickadd/        # Quick Add modal
     keymap/          # Vim-style keybinding definitions
+      keymap.go      # KeyMap struct (Normal/Insert/Command sub-maps), DefaultKeyMap(), KeyFor()
       mode.go        # Mode enum (Normal, Insert, Command) with String()
     theme/           # Lipgloss styling and color scheme
 ```
+
+## Milestones
+
+### M0: Foundation (Complete)
+
+M0 establishes the base application shell — config loading, data layer, sync client, TUI scaffolding, and quit commands. All six features are implemented:
+
+| Feature | Description | Key Files |
+|---|---|---|
+| **F1** | Project scaffolding — Go module, directory layout, pinned dependencies, CI verification (`go test`, `go vet`, `go build`) | `go.mod`, `cmd/todoist-tui/main.go`, `internal/*/doc.go` |
+| **F2** | TOML config loading — `Config` struct, `Load()`, `DefaultConfig()`, `WriteDefaultConfig()` (never overwrites), `Validate()` with `ErrNoToken` sentinel, XDG-compliant paths | `internal/config/` |
+| **F3** | bbolt store initialization — `Store` type with `New()`, `DBPath()`, `Close()`, persistence at XDG data directory | `internal/store/` |
+| **F4** | Sync API client — `Client` with Bearer auth, `FullSync()`, `IncrementalSync()`, temp ID resolution (`resolveTempIDs`), configurable timeout, `ErrAuthFailed`/`ErrSyncFailed` sentinels | `internal/sync/` |
+| **F5** | Root Bubbletea model — 3-panel layout (sidebar/main/detail) with rounded borders, focus cycling (Tab/Shift+Tab), async full sync on `Init()`, error banner, responsive percentage-based sizing | `internal/ui/app.go` |
+| **F6** | Quit command with modal keybindings — `KeyMap` struct with Normal/Insert/Command sub-maps, `DefaultKeyMap()` vim-style bindings, `KeyFor()` lookup, command mode (`:` enters, `:q`/`:quit` quits, keystroke accumulation, Enter/Esc/Backspace/Ctrl+C handling), command bar UI, `Cleanup()`, full `main.go` entrypoint wiring with alt screen | `internal/ui/keymap/`, `internal/ui/app.go`, `cmd/todoist-tui/main.go` |
+
+### Upcoming Milestones
+
+- **M1**: Sidebar — project/filter/label listing with navigation and selection
+- **M2**: Task list — render tasks in table view, sorting, filtering
+- **M3**: Task detail — view/edit task properties, quick add modal
+- **M4**: Full offline support — command queue persistence and replay on reconnect
+- **M5**: Polish — periodic sync background goroutine, status bar, theming refinements
 
 ## Dependencies
 
@@ -124,8 +153,9 @@ The root Bubbletea model (`Model`) manages the full application lifecycle and 3-
 | `Mode` | `keymap/mode.go` | Enum (`ModeNormal`, `ModeInsert`, `ModeCommand`) representing the current editor mode |
 | `NewModel(cfg, store, client)` | `app.go` | Constructor; starts in Sidebar panel, Normal mode, zero dimensions |
 | `Init()` | `app.go` | Kicks off an async `FullSync` via background command; returns `SyncDoneMsg` or `SyncErrMsg` |
-| `Update(msg)` | `app.go` | Handles `WindowSizeMsg` (resize), `KeyMsg` (Tab/Shift+Tab focus cycling), and sync result messages |
-| `View()` | `app.go` | Renders the 3-panel layout plus an error banner at the top when `m.err` is set |
+| `Update(msg)` | `app.go` | Handles `WindowSizeMsg` (resize), per-mode `KeyMsg` dispatch (Normal: `:`→command, `Tab`/`Shift+Tab` focus cycling; Command: keystroke accumulation, Enter/Esc/Backspace/Ctrl+C; Insert: Ctrl+C quit), sync result messages |
+| `View()` | `app.go` | Renders the 3-panel layout plus an error banner at the top when `m.err` is set, and a command bar (`:…`) at the bottom in command mode |
+| `Cleanup()` | `app.go` | Closes the bbolt store; called after program exit to ensure clean shutdown |
 
 **Panel layout**:
 
@@ -158,6 +188,18 @@ The `Mode` type in `keymap/mode.go` defines three editor modes with a `String()`
 **Responsive layout**:
 
 The model tracks terminal dimensions via `tea.WindowSizeMsg`. Panel widths are recalculated on every render using percentage-based splits (20/50/30). If dimensions are zero or negative (e.g., before the first `WindowSizeMsg`), `View()` returns `"Initializing..."` (or the error message if present).
+
+**Command mode**:
+
+Pressing `:` in Normal mode transitions to `ModeCommand` and resets the command buffer (`commandBuf`). The command bar is rendered at the bottom of the view showing the accumulated keystrokes prefixed with `:`. Command mode handling:
+
+| Key | Behavior |
+|---|---|
+| Printable characters | Appended to `commandBuf` via `msg.Runes` |
+| Enter | Executes the command: `"q"` / `"quit"` → `tea.Quit`; anything else sets `m.err` and returns to Normal mode |
+| Esc | Clears the buffer and returns to Normal mode |
+| Backspace | Deletes the last character; if buffer is already empty, cancels back to Normal mode |
+| Ctrl+C | Clears the buffer and returns to Normal mode (does not quit) |
 
 ### Sync Client (`internal/sync`)
 

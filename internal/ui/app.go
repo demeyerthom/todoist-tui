@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/charmbracelet/lipgloss"
 	tea "github.com/charmbracelet/bubbletea"
@@ -37,6 +38,7 @@ type Model struct {
 	syncClient  *sync.Client
 	activePanel Panel
 	mode        keymap.Mode
+	commandBuf  string
 	width       int
 	height      int
 	err         error
@@ -51,6 +53,7 @@ func NewModel(cfg *config.Config, store *store.Store, syncClient *sync.Client) M
 		syncClient:  syncClient,
 		activePanel: PanelSidebar,
 		mode:        keymap.ModeNormal,
+		commandBuf:  "",
 		width:       0,
 		height:      0,
 	}
@@ -76,11 +79,54 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "tab":
-			m.activePanel = Panel((int(m.activePanel) + 1) % panelCount)
-		case "shift+tab":
-			m.activePanel = Panel((int(m.activePanel) - 1 + panelCount) % panelCount)
+		switch m.mode {
+		case keymap.ModeNormal:
+			switch msg.String() {
+			case ":":
+				m.mode = keymap.ModeCommand
+				m.commandBuf = ""
+			case "ctrl+c":
+				return m, tea.Quit
+			case "tab":
+				m.activePanel = Panel((int(m.activePanel) + 1) % panelCount)
+			case "shift+tab":
+				m.activePanel = Panel((int(m.activePanel) - 1 + panelCount) % panelCount)
+			}
+
+		case keymap.ModeInsert:
+			if msg.String() == "ctrl+c" {
+				return m, tea.Quit
+			}
+
+		case keymap.ModeCommand:
+			switch msg.String() {
+			case "enter":
+				switch m.commandBuf {
+				case "q", "quit":
+					return m, tea.Quit
+				default:
+					m.err = fmt.Errorf("unknown command: %s", m.commandBuf)
+					m.mode = keymap.ModeNormal
+					m.commandBuf = ""
+				}
+			case "esc":
+				m.commandBuf = ""
+				m.mode = keymap.ModeNormal
+			case "backspace":
+				if len(m.commandBuf) > 0 {
+					m.commandBuf = m.commandBuf[:len(m.commandBuf)-1]
+				} else {
+					m.commandBuf = ""
+					m.mode = keymap.ModeNormal
+				}
+			case "ctrl+c":
+				m.commandBuf = ""
+				m.mode = keymap.ModeNormal
+			default:
+				if len(msg.Runes) > 0 {
+					m.commandBuf += string(msg.Runes)
+				}
+			}
 		}
 
 	case SyncDoneMsg:
@@ -95,6 +141,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View implements tea.Model. It renders the 3-panel layout:
 // sidebar (~20%), main (~50%), detail (~30%) joined horizontally.
 // Any error present in m.err is displayed as a banner at the top.
+// When in command mode, a command bar is displayed at the bottom.
 func (m Model) View() string {
 	if m.width <= 0 || m.height <= 0 {
 		if m.err != nil {
@@ -103,8 +150,16 @@ func (m Model) View() string {
 		return "Initializing..."
 	}
 
-	// Render error banner if an error is set
-	content := m.panelsView()
+	// Compute effective panel height, accounting for error banner and command bar
+	panelHeight := m.height
+	if m.err != nil {
+		panelHeight--
+	}
+	if m.mode == keymap.ModeCommand {
+		panelHeight--
+	}
+
+	content := m.panelsView(panelHeight)
 	if m.err != nil {
 		errBanner := lipgloss.NewStyle().
 			Foreground(lipgloss.Color(m.cfg.Theme.Error)).
@@ -112,11 +167,18 @@ func (m Model) View() string {
 			Render("Error: " + m.err.Error())
 		content = lipgloss.JoinVertical(lipgloss.Top, errBanner, content)
 	}
+	if m.mode == keymap.ModeCommand {
+		cmdBar := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(m.cfg.Theme.CommandBar)).
+			Width(m.width).
+			Render(":" + m.commandBuf)
+		content = lipgloss.JoinVertical(lipgloss.Top, content, cmdBar)
+	}
 	return content
 }
 
-// panelsView renders the 3-panel layout without the error banner.
-func (m Model) panelsView() string {
+// panelsView renders the 3-panel layout without the error banner or command bar.
+func (m Model) panelsView(panelHeight int) string {
 	// Calculate panel widths (~20/50/30 split)
 	sidebarWidth := max(1, m.width*20/100)
 	mainWidth := max(1, m.width*50/100)
@@ -125,21 +187,21 @@ func (m Model) panelsView() string {
 	// Panel styles with rounded borders and focus-aware border color
 	sidebarStyle := lipgloss.NewStyle().
 		Width(sidebarWidth).
-		Height(m.height).
+		Height(panelHeight).
 		Border(lipgloss.RoundedBorder()).
 		BorderRight(true).
 		BorderForeground(m.borderColor(PanelSidebar))
 
 	mainStyle := lipgloss.NewStyle().
 		Width(mainWidth).
-		Height(m.height).
+		Height(panelHeight).
 		Border(lipgloss.RoundedBorder()).
 		BorderRight(true).
 		BorderForeground(m.borderColor(PanelMain))
 
 	detailStyle := lipgloss.NewStyle().
 		Width(detailWidth).
-		Height(m.height).
+		Height(panelHeight).
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(m.borderColor(PanelDetail))
 
@@ -147,7 +209,7 @@ func (m Model) panelsView() string {
 	sidebarInnerW := max(1, sidebarWidth-2)
 	mainInnerW := max(1, mainWidth-2)
 	detailInnerW := max(1, detailWidth-2)
-	innerH := max(1, m.height-2)
+	innerH := max(1, panelHeight-2)
 
 	// Render each panel with styled placeholder content
 	sidebar := sidebarStyle.Render(m.sidebarView(sidebarInnerW, innerH))
@@ -165,6 +227,13 @@ func (m Model) borderColor(p Panel) lipgloss.TerminalColor {
 		return lipgloss.Color(m.cfg.Theme.ActiveBorder)
 	}
 	return lipgloss.Color(m.cfg.Theme.InactiveBorder)
+}
+
+// Cleanup releases resources held by the model, including closing the store.
+// Call this after tea.Program.Run() returns to ensure the bbolt database is
+// cleanly closed.
+func (m Model) Cleanup() error {
+	return m.store.Close()
 }
 
 // sidebarView renders the sidebar panel's placeholder content.

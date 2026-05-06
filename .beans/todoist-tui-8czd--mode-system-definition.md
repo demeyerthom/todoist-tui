@@ -1,10 +1,11 @@
 ---
 # todoist-tui-8czd
 title: Mode system definition
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-05-03T15:10:37Z
-updated_at: 2026-05-03T15:10:37Z
+updated_at: 2026-05-06T11:51:55Z
 parent: todoist-tui-m0uv
 blocked_by:
     - todoist-tui-7h9s
@@ -27,3 +28,13 @@ Define the Mode enum and KeyMap type for vim-style modal keybindings in internal
 - KeyMap struct defined with sub-maps for each mode
 - DefaultKeyMap() returns planned bindings
 - Model.mode field exists
+
+## Summary of Changes
+
+Created internal/ui/keymap/keymap.go with:
+- KeyMap struct with Normal, Insert, Command sub-maps (map[string]string)
+- DefaultKeyMap() returning vim-style bindings matching config defaults
+- KeyFor(mode, action) lookup method
+- Mode type already existed from F5 (mode.go)
+- Model.mode field already existed from F5 (app.go)
+- go build and go vet pass

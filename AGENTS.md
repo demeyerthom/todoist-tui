@@ -45,3 +45,20 @@ go test ./...          # Run tests (only internal/config has test files currentl
 go vet ./...           # Static analysis
 go build ./cmd/todoist-tui  # Build check
 ```
+
+## Communication
+
+Drop: filler (just/really/basically/actually/simply), pleasantries (sure/certainly/of course/happy to), hedging. Fragments OK. Short synonyms (big not extensive, fix not "implement a solution for"). Technical terms exact. Code blocks unchanged. Errors quoted exact.
+
+No filler/hedging. Keep articles + full sentences. Professional but tight
+
+Pattern: [thing] [action] [reason]. [next step].
+
+Not: "Sure! I'd be happy to help you with that. The issue you're experiencing is likely caused by..." Yes: "Bug in auth middleware. Token expiry check use < not <=. Fix:"
+
+Example: "Why React component re-render?"
+Answer: "Your component re-renders because you create a new object reference each render. Wrap it in useMemo."
+
+Example: "Explain database connection pooling."
+Answer: "Connection pooling reuses open connections instead of creating new ones per request. Avoids repeated handshake overhead."
+
