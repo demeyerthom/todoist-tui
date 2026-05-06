@@ -4,7 +4,11 @@ A terminal UI for [Todoist](https://todoist.com), built with Go and the [Charm](
 
 ## Features
 
-- **Sync API v9 client** — full and incremental sync against the Todoist REST API
+- **3-panel TUI** — sidebar (projects, filters, labels), main task list, and detail panel with lipgloss rounded borders and responsive layout
+- **Focus cycling** — Tab / Shift+Tab to rotate between panels; active border highlight from theme config
+- **Vim-style modal keybindings** — Normal, Insert, and Command modes via `internal/ui/keymap`
+- **Async full sync on startup** — `Init()` launches a background full sync against the Todoist Sync API v9
+- **Error banner** — sync failures rendered at the top of the view with the theme's error color
 - **Optimistic updates** — local changes use `tmp-` prefixed temp IDs, resolved on sync
 - **Offline support** — command queue with replay on reconnect
 - **Bearer token auth** — configurable API token with sentinel errors (`ErrAuthFailed`, `ErrSyncFailed`)
@@ -76,11 +80,13 @@ internal/
   model/             # Domain types (Task, Project, Section, Label, Filter)
   queue/             # Offline command queue and replay
   ui/                # Root Bubbletea model and shared UI components
+    app.go           # Root Model, Panel enum, NewModel, Init, Update, View, 3-panel rendering
     sidebar/         # Sidebar panel (projects, filters, labels)
     tasklist/        # Task list panel (compact/expanded)
     detail/          # Task detail and edit panel
     quickadd/        # Quick Add modal
     keymap/          # Vim-style keybinding definitions
+      mode.go        # Mode enum (Normal, Insert, Command) with String()
     theme/           # Lipgloss styling and color scheme
 ```
 
@@ -106,6 +112,52 @@ Dependencies are pinned via blank imports in `doc.go` files so `go mod tidy` pre
 - **Optimistic updates**: local changes use `tmp-` prefixed temp IDs, resolved on sync
 - **Offline support**: command queue with replay on reconnect
 - **Periodic sync**: every 30s in background
+
+### TUI Model (`internal/ui`)
+
+The root Bubbletea model (`Model`) manages the full application lifecycle and 3-panel layout:
+
+| Type | File | Description |
+|---|---|---|
+| `Model` | `app.go` | Root Bubbletea model holding config, store, sync client, active panel, mode, and dimensions |
+| `Panel` | `app.go` | Enum (`PanelSidebar`, `PanelMain`, `PanelDetail`) identifying the focused panel |
+| `Mode` | `keymap/mode.go` | Enum (`ModeNormal`, `ModeInsert`, `ModeCommand`) representing the current editor mode |
+| `NewModel(cfg, store, client)` | `app.go` | Constructor; starts in Sidebar panel, Normal mode, zero dimensions |
+| `Init()` | `app.go` | Kicks off an async `FullSync` via background command; returns `SyncDoneMsg` or `SyncErrMsg` |
+| `Update(msg)` | `app.go` | Handles `WindowSizeMsg` (resize), `KeyMsg` (Tab/Shift+Tab focus cycling), and sync result messages |
+| `View()` | `app.go` | Renders the 3-panel layout plus an error banner at the top when `m.err` is set |
+
+**Panel layout**:
+
+The `View()` method renders three panels joined horizontally:
+
+- **Sidebar** (~20% width) — placeholder headings for Projects, Filters, Labels (styled with `theme.Header` color)
+- **Main** (~50% width) — placeholder "Select a project or filter" (styled with `theme.MutedText`)
+- **Detail** (~30% width) — placeholder "No task selected" (styled with `theme.MutedText`)
+
+Ripple-wrap borders are drawn with `lipgloss.RoundedBorder()`. The active panel's border uses `theme.ActiveBorder`; inactive panels use `theme.InactiveBorder`.
+
+**Focus cycling**:
+
+`Tab` advances focus to the next panel (Sidebar → Main → Detail → Sidebar). `Shift+Tab` moves backward. Focus cycling wraps around using modulo arithmetic on the `activePanel` field.
+
+**Vim-style modes**:
+
+The `Mode` type in `keymap/mode.go` defines three editor modes with a `String()` method:
+
+| Constant | String | Purpose |
+|---|---|---|
+| `ModeNormal` | `"NORMAL"` | Default navigation and command mode |
+| `ModeInsert` | `"INSERT"` | Text input mode (form fields) |
+| `ModeCommand` | `"COMMAND"` | Command-line mode for ex-style (colon) commands |
+
+**Async full sync**:
+
+`Init()` returns a `tea.Cmd` that runs `syncClient.FullSync(context.Background(), store)` in a background goroutine. On success, `SyncDoneMsg` is dispatched — the store is already populated by the sync client. On failure, `SyncErrMsg` carries the error, which is displayed as a red banner at the top of the view.
+
+**Responsive layout**:
+
+The model tracks terminal dimensions via `tea.WindowSizeMsg`. Panel widths are recalculated on every render using percentage-based splits (20/50/30). If dimensions are zero or negative (e.g., before the first `WindowSizeMsg`), `View()` returns `"Initializing..."` (or the error message if present).
 
 ### Sync Client (`internal/sync`)
 

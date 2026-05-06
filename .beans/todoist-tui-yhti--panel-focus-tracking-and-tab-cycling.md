@@ -1,10 +1,11 @@
 ---
 # todoist-tui-yhti
 title: Panel focus tracking and Tab cycling
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-05-03T15:10:18Z
-updated_at: 2026-05-03T15:10:18Z
+updated_at: 2026-05-06T11:26:03Z
 parent: todoist-tui-cwq9
 blocked_by:
     - todoist-tui-7h9s
@@ -29,3 +30,13 @@ Track which panel is active (focused) and cycle focus with Tab. Highlight the ac
 - Shift+Tab cycles backward
 - Active panel has visually distinct border
 - Inactive panels have dimmed border
+
+## Summary of Changes
+
+Updated internal/ui/app.go with:
+- Tab key cycles activePanel forward (sidebar → main → detail → sidebar)
+- Shift+Tab cycles backward (detail → main → sidebar → detail)
+- Active panel border uses cfg.Theme.ActiveBorder color
+- Inactive panel borders use cfg.Theme.InactiveBorder color
+- borderColor helper method on Model
+- go build and go vet pass
