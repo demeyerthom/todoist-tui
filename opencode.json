@@ -1,0 +1,26 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "plan": {
+      "model": "opencode-go/qwen3.6-plus"
+    },
+    "build": {
+      "model": "opencode-go/qwen3.6-plus"
+    },
+    "orchestrator": {
+      "model": "opencode-go/glm-5.1"
+    },
+    "coder": {
+      "model": "opencode-go/deepseek-v4-pro"
+    },
+    "analyst": {
+      "model": "opencode-go/deepseek-v4-pro"
+    },
+    "reviewer": {
+      "model": "opencode-go/deepseek-v4-pro"
+    },
+    "documenter": {
+      "model": "opencode-go/deepseek-v4-pro"
+    }
+  }
+}

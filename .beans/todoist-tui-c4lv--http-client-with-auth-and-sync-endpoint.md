@@ -1,10 +1,11 @@
 ---
 # todoist-tui-c4lv
 title: HTTP client with auth and sync endpoint
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-05-03T15:09:41Z
-updated_at: 2026-05-03T15:09:41Z
+updated_at: 2026-05-06T09:57:51Z
 parent: todoist-tui-efa6
 blocked_by:
     - todoist-tui-7gco
@@ -33,3 +34,16 @@ Implement the Sync API HTTP client with Bearer auth, context support, and the co
 - Context cancellation is respected
 - Timeouts and network errors return wrapped errors
 - 'go build ./...' and 'go vet ./...' pass
+
+## Summary of Changes
+
+Created internal/sync/client.go with:
+- ClientConfig struct (Token, Timeout, Endpoint) with defaults (30s, SyncEndpoint)
+- Client struct with unexported httpClient, token, endpoint fields
+- NewClient(cfg ClientConfig) *Client constructor
+- DoSync(ctx, SyncRequest) (*SyncResponse, error) method with:
+  - Bearer auth header
+  - Context-aware request via NewRequestWithContext
+  - 401 → ErrAuthFailed, non-2xx → ErrSyncFailed, network errors → ErrSyncFailed wrapped
+  - JSON encode/decode of request/response
+- go build and go vet pass

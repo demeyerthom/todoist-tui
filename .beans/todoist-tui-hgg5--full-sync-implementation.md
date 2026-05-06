@@ -1,10 +1,11 @@
 ---
 # todoist-tui-hgg5
 title: Full sync implementation
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-05-03T15:09:45Z
-updated_at: 2026-05-03T15:09:45Z
+updated_at: 2026-05-06T10:00:20Z
 parent: todoist-tui-efa6
 blocked_by:
     - todoist-tui-c4lv
@@ -34,3 +35,13 @@ Implement FullSync that sends sync_token=* with all resource types, writes resul
 - Sync token is persisted after successful sync
 - Auth errors return ErrAuthFailed
 - Network errors return ErrSyncFailed
+
+## Summary of Changes
+
+Created internal/sync/sync.go with:
+- FullSync method on Client that sends sync_token='*' with all ResourceTypes
+- Iterates all entity collections (Tasks, Projects, Sections, Labels, Filters) and stores them via typed Store methods
+- Persists sync_token via store.SetSyncToken after all entities are written
+- Propagates ErrAuthFailed/ErrSyncFailed from DoSync
+- Store errors wrapped with entity type and ID context
+- go build and go vet pass

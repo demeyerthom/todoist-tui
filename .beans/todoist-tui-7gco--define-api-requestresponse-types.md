@@ -1,10 +1,11 @@
 ---
 # todoist-tui-7gco
 title: Define API request/response types
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-05-03T15:09:37Z
-updated_at: 2026-05-03T15:09:37Z
+updated_at: 2026-05-06T09:55:36Z
 parent: todoist-tui-efa6
 blocked_by:
     - todoist-tui-4yfu
@@ -28,3 +29,13 @@ Define SyncRequest, SyncResponse, Command, and related types in internal/sync/ty
 - Types defined in internal/sync/types.go
 - ResourceTypes includes all 5 resource types
 - 'go build ./...' succeeds
+
+## Summary of Changes
+
+Created internal/sync/types.go with:
+- SyncRequest, SyncResponse, Command structs with JSON tags matching Todoist Sync API v9
+- ResourceTypes var (items, projects, sections, labels, filters)
+- SyncEndpoint constant (https://api.todoist.com/sync/v9/sync)
+- ErrAuthFailed and ErrSyncFailed sentinel errors
+- All types reference model package types correctly
+- go build and go vet pass

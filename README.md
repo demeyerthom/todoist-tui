@@ -4,7 +4,12 @@ A terminal UI for [Todoist](https://todoist.com), built with Go and the [Charm](
 
 ## Features
 
-*TBD*
+- **Sync API v9 client** — full and incremental sync against the Todoist REST API
+- **Optimistic updates** — local changes use `tmp-` prefixed temp IDs, resolved on sync
+- **Offline support** — command queue with replay on reconnect
+- **Bearer token auth** — configurable API token with sentinel errors (`ErrAuthFailed`, `ErrSyncFailed`)
+- **Context-aware requests** — cancellable HTTP calls with configurable timeout (default 30s)
+- **Deleted entity handling** — `IsDeleted` entities are removed from the local store on incremental sync
 
 ## Requirements
 
@@ -66,7 +71,7 @@ The app will not start without a valid token — `config.Validate()` returns `Er
 cmd/todoist-tui/     # Entrypoint (main.go)
 internal/
   config/            # TOML config loading (Config, Load, DefaultConfig, WriteDefaultConfig, Validate)
-  sync/              # Todoist Sync API v9 client
+  sync/              # Todoist Sync API v9 client (Client, FullSync, IncrementalSync, resolveTempIDs)
   store/             # bbolt storage layer
   model/             # Domain types (Task, Project, Section, Label, Filter)
   queue/             # Offline command queue and replay
@@ -101,6 +106,31 @@ Dependencies are pinned via blank imports in `doc.go` files so `go mod tidy` pre
 - **Optimistic updates**: local changes use `tmp-` prefixed temp IDs, resolved on sync
 - **Offline support**: command queue with replay on reconnect
 - **Periodic sync**: every 30s in background
+
+### Sync Client (`internal/sync`)
+
+The sync package provides a fully tested HTTP client for the Todoist Sync API v9:
+
+| Type | File | Description |
+|---|---|---|
+| `ClientConfig` | `client.go` | Configuration: API token, timeout, endpoint override |
+| `Client` | `client.go` | HTTP client with Bearer auth and context-aware requests |
+| `NewClient(cfg)` | `client.go` | Constructor; defaults timeout to 30s, endpoint to `SyncEndpoint` |
+| `DoSync(ctx, req)` | `client.go` | Low-level sync request; returns `ErrAuthFailed` on 401, `ErrSyncFailed` on other errors |
+| `FullSync(ctx, store)` | `sync.go` | Fetches all data (`sync_token=*`), writes every entity to bbolt, persists sync token |
+| `IncrementalSync(ctx, store)` | `sync.go` | Delta sync using stored token; falls back to `FullSync` if no token; removes `IsDeleted` entities |
+| `resolveTempIDs(store, mapping)` | `tempid.go` | Replaces `tmp-` prefixed IDs with server-assigned IDs; updates cross-entity references; removes orphans |
+| `SyncRequest` / `SyncResponse` | `types.go` | Request/response types for the Sync API |
+| `Command` | `types.go` | Single command payload for optimistic updates |
+| `ErrAuthFailed` / `ErrSyncFailed` | `types.go` | Sentinel errors for auth failure (401) and general sync failures |
+
+**Sync flow**:
+
+1. On first launch, `FullSync` sends `sync_token=*` to fetch all items, projects, sections, labels, and filters.
+2. On subsequent syncs, `IncrementalSync` sends the stored sync token for delta updates.
+3. Entities with `IsDeleted=true` are removed from the local store.
+4. The `temp_id_mapping` from the response is processed by `resolveTempIDs`, which replaces `tmp-` placeholder IDs with real server IDs and updates all cross-entity references (e.g., `Task.ProjectID`, `Task.SectionID`, `Task.ParentID`, `Section.ProjectID`).
+5. Any orphaned entities still carrying a `tmp-` prefix after resolution are cleaned up.
 
 ## Key Conventions
 

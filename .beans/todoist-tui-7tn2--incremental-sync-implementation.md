@@ -1,10 +1,11 @@
 ---
 # todoist-tui-7tn2
 title: Incremental sync implementation
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-05-03T15:09:50Z
-updated_at: 2026-05-03T15:09:50Z
+updated_at: 2026-05-06T10:03:25Z
 parent: todoist-tui-efa6
 blocked_by:
     - todoist-tui-hgg5
@@ -30,3 +31,13 @@ Implement IncrementalSync that reads the stored sync token and sends an incremen
 - Incremental sync updates store with only changed entities
 - Deleted entities are removed
 - Sync token updated after success
+
+## Summary of Changes
+
+Added IncrementalSync method to Client in internal/sync/sync.go:
+- Reads stored sync_token via store.GetSyncToken()
+- Empty token delegates to FullSync (first-launch scenario)
+- Sends SyncRequest with stored token + all ResourceTypes
+- Handles IsDeleted flag: deleted entities removed via Delete* methods, updated entities stored via Put* methods
+- Persists new sync_token on success
+- go build and go vet pass

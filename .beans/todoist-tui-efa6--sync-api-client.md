@@ -1,11 +1,11 @@
 ---
 # todoist-tui-efa6
 title: Sync API client
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-05-03T14:58:18Z
-updated_at: 2026-05-03T15:11:30Z
+updated_at: 2026-05-06T10:19:35Z
 parent: todoist-tui-j3br
 ---
 
@@ -25,3 +25,15 @@ Todoist Sync API v9 client: perform full sync on first launch (sync_token=*), st
 ## Cross-feature dependencies
 - Depends on F1 (project init) and F3 (store/models)
 - F5 (TUI) init sync depends on this feature
+
+## Summary of Changes
+
+Implemented the Todoist Sync API v9 client in internal/sync/:
+
+1. **types.go** — SyncRequest, SyncResponse, Command structs with JSON tags; ResourceTypes var; SyncEndpoint constant; ErrAuthFailed/ErrSyncFailed sentinel errors
+2. **client.go** — ClientConfig, Client, NewClient, DoSync method with Bearer auth, context support, error handling
+3. **sync.go** — FullSync method (sync_token='*', stores all entities, persists sync token) and IncrementalSync method (uses stored token, handles IsDeleted entities, delegates to FullSync on empty token)
+4. **tempid.go** — resolveTempIDs for tmp- prefix ID resolution across entity types and cross-references, with orphan cleanup
+5. **sync_test.go** — 8 tests covering FullSync, IncrementalSync, auth failure, network error, temp ID mapping, deleted entities, empty token delegation, and non-401 HTTP errors
+
+All tests pass, go build and go vet clean.
