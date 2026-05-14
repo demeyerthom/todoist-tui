@@ -17,7 +17,7 @@ Dependencies are pinned via blank imports in `doc.go` files so `go mod tidy` pre
 - Standard Go layout: `cmd/todoist-tui/main.go` entrypoint, `internal/` for all packages
 - 3-panel TUI: sidebar, task list, detail — managed by Bubbletea Elm architecture
 - Vim-style modal keybindings (normal/insert/command)
-- Sync API v9 with optimistic updates using `tmp-` prefixed temp IDs
+- Sync API v1 with optimistic updates using `tmp-` prefixed temp IDs
 - Offline: command queue + replay on reconnect
 
 ## Task tracking
@@ -61,4 +61,3 @@ Answer: "Your component re-renders because you create a new object reference eac
 
 Example: "Explain database connection pooling."
 Answer: "Connection pooling reuses open connections instead of creating new ones per request. Avoids repeated handshake overhead."
-

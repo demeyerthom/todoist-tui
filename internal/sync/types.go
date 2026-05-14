@@ -7,7 +7,7 @@ import (
 )
 
 // SyncEndpoint is the Todoist Sync API v9 endpoint.
-const SyncEndpoint = "https://api.todoist.com/sync/v9/sync"
+const SyncEndpoint = "https://api.todoist.com/api/v1/sync"
 
 // ResourceTypes lists the resource types requested in every sync call.
 var ResourceTypes = []string{"items", "projects", "sections", "labels", "filters"}
@@ -16,6 +16,11 @@ var ResourceTypes = []string{"items", "projects", "sections", "labels", "filters
 var (
 	// ErrAuthFailed is returned when the API responds with 401 Unauthorized.
 	ErrAuthFailed = errors.New("sync: authentication failed (401)")
+
+	// ErrSyncGone is returned when the API responds with 410 Gone,
+	// indicating the stored sync token is no longer valid and a full
+	// sync is required.
+	ErrSyncGone = errors.New("sync: sync token expired (410)")
 
 	// ErrSyncFailed is returned for non-200 responses or network errors.
 	ErrSyncFailed = errors.New("sync: request failed")
@@ -30,12 +35,12 @@ type SyncRequest struct {
 
 // SyncResponse is the payload received from the Todoist Sync API v9 endpoint.
 type SyncResponse struct {
-	SyncToken    string            `json:"sync_token"`
-	Items        []model.Task      `json:"items"`
-	Projects     []model.Project   `json:"projects"`
-	Sections     []model.Section   `json:"sections"`
-	Labels       []model.Label     `json:"labels"`
-	Filters      []model.Filter    `json:"filters"`
+	SyncToken     string            `json:"sync_token"`
+	Items         []model.Task      `json:"items"`
+	Projects      []model.Project   `json:"projects"`
+	Sections      []model.Section   `json:"sections"`
+	Labels        []model.Label     `json:"labels"`
+	Filters       []model.Filter    `json:"filters"`
 	TempIDMapping map[string]string `json:"temp_id_mapping"`
 }
 

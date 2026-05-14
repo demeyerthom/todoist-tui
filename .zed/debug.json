@@ -1,0 +1,10 @@
+[
+  {
+    "label": "Run todoist-tui",
+    "adapter": "Delve",
+    "program": "${ZED_WORKTREE_ROOT}/cmd/todoist-tui/main.go",
+    "request": "launch",
+    "mode": "debug",
+    
+  },
+]

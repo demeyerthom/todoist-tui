@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
+	
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -41,8 +41,8 @@ func newTestClient(serverURL string) *Client {
 func mockHandler(t *testing.T, resp SyncResponse) http.HandlerFunc {
 	t.Helper()
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			t.Errorf("expected POST, got %s", r.Method)
+		if r.Method != http.MethodGet {
+			t.Errorf("expected GET, got %s", r.Method)
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
@@ -50,19 +50,6 @@ func mockHandler(t *testing.T, resp SyncResponse) http.HandlerFunc {
 		if auth == "" || auth[:7] != "Bearer " {
 			t.Errorf("missing or malformed Authorization header: %q", auth)
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-		// Decode request body to verify it's well-formed.
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			t.Errorf("read body: %v", err)
-			http.Error(w, "bad request", http.StatusBadRequest)
-			return
-		}
-		var req SyncRequest
-		if err := json.Unmarshal(body, &req); err != nil {
-			t.Errorf("unmarshal request: %v", err)
-			http.Error(w, "bad request", http.StatusBadRequest)
 			return
 		}
 
@@ -78,8 +65,8 @@ func mockHandler(t *testing.T, resp SyncResponse) http.HandlerFunc {
 func mockHandlerWithRequestCapture(t *testing.T, resp SyncResponse, reqOut *SyncRequest) http.HandlerFunc {
 	t.Helper()
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			t.Errorf("expected POST, got %s", r.Method)
+		if r.Method != http.MethodGet {
+			t.Errorf("expected GET, got %s", r.Method)
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
@@ -89,19 +76,19 @@ func mockHandlerWithRequestCapture(t *testing.T, resp SyncResponse, reqOut *Sync
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			t.Errorf("read body: %v", err)
-			http.Error(w, "bad request", http.StatusBadRequest)
-			return
+
+		q := r.URL.Query()
+		reqOut.SyncToken = q.Get("sync_token")
+		if rt := q.Get("resource_types"); rt != "" {
+			if err := json.Unmarshal([]byte(rt), &reqOut.ResourceTypes); err != nil {
+				t.Errorf("unmarshal resource_types: %v", err)
+			}
 		}
-		var req SyncRequest
-		if err := json.Unmarshal(body, &req); err != nil {
-			t.Errorf("unmarshal request: %v", err)
-			http.Error(w, "bad request", http.StatusBadRequest)
-			return
+		if cmd := q.Get("commands"); cmd != "" {
+			if err := json.Unmarshal([]byte(cmd), &reqOut.Commands); err != nil {
+				t.Errorf("unmarshal commands: %v", err)
+			}
 		}
-		*reqOut = req
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
@@ -222,6 +209,61 @@ func TestFullSync(t *testing.T) {
 	}
 	if token != "full-sync-token-1" {
 		t.Errorf("sync token: got=%q, want=%q", token, "full-sync-token-1")
+	}
+}
+
+func TestFullSync_ResolvesTempIDs(t *testing.T) {
+	resp := SyncResponse{
+		SyncToken: "token-with-tempids",
+		Items: []model.Task{
+			{ID: "tmp-task-1", Content: "Resolve me", ProjectID: "proj-1", Priority: 1},
+		},
+		Projects: []model.Project{
+			{ID: "proj-1", Name: "Work", Color: "blue"},
+		},
+		Sections: []model.Section{},
+		Labels:   []model.Label{},
+		Filters:  []model.Filter{},
+		TempIDMapping: map[string]string{
+			"tmp-task-1": "real-task-1",
+		},
+	}
+
+	srv := httptest.NewServer(mockHandler(t, resp))
+	defer srv.Close()
+
+	s, cleanup := openTestStore(t)
+	defer cleanup()
+
+	client := newTestClient(srv.URL)
+	if err := client.FullSync(context.Background(), s); err != nil {
+		t.Fatalf("FullSync: %v", err)
+	}
+
+	// Verify the temp ID was resolved to the real ID.
+	task, err := s.GetTask("real-task-1")
+	if err != nil {
+		t.Fatalf("GetTask real-task-1: %v", err)
+	}
+	if task.Content != "Resolve me" {
+		t.Errorf("task content: got=%q, want=%q", task.Content, "Resolve me")
+	}
+	if task.ProjectID != "proj-1" {
+		t.Errorf("task ProjectID: got=%q, want=%q", task.ProjectID, "proj-1")
+	}
+
+	// Verify the temp ID entry is gone.
+	if _, err := s.GetTask("tmp-task-1"); err == nil {
+		t.Error("expected temp task tmp-task-1 to be removed, but it still exists")
+	}
+
+	// Verify sync token was persisted (resolve happens before SetSyncToken).
+	token, err := s.GetSyncToken()
+	if err != nil {
+		t.Fatalf("GetSyncToken: %v", err)
+	}
+	if token != "token-with-tempids" {
+		t.Errorf("sync token: got=%q, want=%q", token, "token-with-tempids")
 	}
 }
 

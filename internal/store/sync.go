@@ -75,6 +75,22 @@ func (s *Store) GetLastSyncTime() (string, error) {
 	return ts, nil
 }
 
+// DeleteSyncToken removes the stored sync token, forcing a full sync on
+// the next sync attempt.
+func (s *Store) DeleteSyncToken() error {
+	err := s.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(syncMetaBucket))
+		if b == nil {
+			return nil
+		}
+		return b.Delete([]byte(syncTokenKey))
+	})
+	if err != nil {
+		return fmt.Errorf("store: delete sync token: %w", err)
+	}
+	return nil
+}
+
 // SetLastSyncTime records the timestamp of the last successful sync.
 // It stores the time in RFC3339 format.
 func (s *Store) SetLastSyncTime(t time.Time) error {

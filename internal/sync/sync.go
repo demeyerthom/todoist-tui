@@ -2,6 +2,7 @@ package sync
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/demeyerthom/todoist-tui/internal/store"
@@ -54,6 +55,12 @@ func (c *Client) FullSync(ctx context.Context, s *store.Store) error {
 		}
 	}
 
+	if len(resp.TempIDMapping) > 0 {
+		if err := resolveTempIDs(s, resp.TempIDMapping); err != nil {
+			return fmt.Errorf("sync: resolve temp IDs: %w", err)
+		}
+	}
+
 	if err := s.SetSyncToken(resp.SyncToken); err != nil {
 		return fmt.Errorf("sync: persist sync token: %w", err)
 	}
@@ -83,6 +90,12 @@ func (c *Client) IncrementalSync(ctx context.Context, s *store.Store) error {
 
 	resp, err := c.DoSync(ctx, req)
 	if err != nil {
+		if errors.Is(err, ErrSyncGone) {
+			if delErr := s.DeleteSyncToken(); delErr != nil {
+				return fmt.Errorf("sync: delete stale sync token: %w", delErr)
+			}
+			return c.FullSync(ctx, s)
+		}
 		return err
 	}
 
@@ -148,6 +161,12 @@ func (c *Client) IncrementalSync(ctx context.Context, s *store.Store) error {
 			if err := s.PutFilter(f); err != nil {
 				return fmt.Errorf("sync: store filter %s: %w", f.ID, err)
 			}
+		}
+	}
+
+	if len(resp.TempIDMapping) > 0 {
+		if err := resolveTempIDs(s, resp.TempIDMapping); err != nil {
+			return fmt.Errorf("sync: resolve temp IDs: %w", err)
 		}
 	}
 

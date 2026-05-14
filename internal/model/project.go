@@ -7,6 +7,7 @@ type Project struct {
 	Color      string `json:"color"`
 	IsFavorite bool   `json:"is_favorite"`
 	IsInbox    bool   `json:"is_inbox"`
+	ParentID   string `json:"parent_id,omitempty"`
 	ViewStyle  string `json:"view_style"`
 	IsDeleted  bool   `json:"is_deleted"`
 	IsArchived bool   `json:"is_archived"`

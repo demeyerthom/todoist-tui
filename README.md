@@ -12,7 +12,7 @@ A terminal UI for [Todoist](https://todoist.com), built with Go and the [Charm](
 - **Keystroke accumulation** — in command mode, printable characters accumulate in `commandBuf`; Backspace deletes last character (or cancels if already empty); Enter executes; Esc cancels
 - **Graceful cleanup** — `Model.Cleanup()` closes the bbolt store; called in `main.go` on both successful exit and error paths
 - **Full entrypoint wiring** — `main.go` chains config → store → sync client → Bubbletea program with alt screen, version banner
-- **Async full sync on startup** — `Init()` launches a background full sync against the Todoist Sync API v9
+- **Async sync on startup** — `Init()` launches a background incremental sync (delegates to `FullSync` when no sync token exists)
 - **Error banner** — sync failures rendered at the top of the view with the theme's error color
 - **Optimistic updates** — local changes use `tmp-` prefixed temp IDs, resolved on sync
 - **Offline support** — command queue with replay on reconnect
@@ -152,7 +152,7 @@ The root Bubbletea model (`Model`) manages the full application lifecycle and 3-
 | `Panel` | `app.go` | Enum (`PanelSidebar`, `PanelMain`, `PanelDetail`) identifying the focused panel |
 | `Mode` | `keymap/mode.go` | Enum (`ModeNormal`, `ModeInsert`, `ModeCommand`) representing the current editor mode |
 | `NewModel(cfg, store, client)` | `app.go` | Constructor; starts in Sidebar panel, Normal mode, zero dimensions |
-| `Init()` | `app.go` | Kicks off an async `FullSync` via background command; returns `SyncDoneMsg` or `SyncErrMsg` |
+| `Init()` | `app.go` | Kicks off an async incremental sync (falls back to `FullSync` when no sync token exists); returns `SyncCompleteMsg` or `SyncErrMsg` |
 | `Update(msg)` | `app.go` | Handles `WindowSizeMsg` (resize), per-mode `KeyMsg` dispatch (Normal: `:`→command, `Tab`/`Shift+Tab` focus cycling; Command: keystroke accumulation, Enter/Esc/Backspace/Ctrl+C; Insert: Ctrl+C quit), sync result messages |
 | `View()` | `app.go` | Renders the 3-panel layout plus an error banner at the top when `m.err` is set, and a command bar (`:…`) at the bottom in command mode |
 | `Cleanup()` | `app.go` | Closes the bbolt store; called after program exit to ensure clean shutdown |
@@ -183,7 +183,7 @@ The `Mode` type in `keymap/mode.go` defines three editor modes with a `String()`
 
 **Async full sync**:
 
-`Init()` returns a `tea.Cmd` that runs `syncClient.FullSync(context.Background(), store)` in a background goroutine. On success, `SyncDoneMsg` is dispatched — the store is already populated by the sync client. On failure, `SyncErrMsg` carries the error, which is displayed as a red banner at the top of the view.
+`Init()` returns a `tea.Cmd` that runs `syncClient.IncrementalSync(context.Background(), store)` in a background goroutine (which delegates to `FullSync` when no sync token exists). On success, `msg.SyncCompleteMsg` is dispatched — the store is already populated by the sync client. On failure, `SyncErrMsg` carries the error, which is displayed as a red banner at the top of the view.
 
 **Responsive layout**:
 

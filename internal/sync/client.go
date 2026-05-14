@@ -1,12 +1,11 @@
 package sync
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -50,19 +49,38 @@ func NewClient(cfg ClientConfig) *Client {
 
 // DoSync sends a sync request to the Todoist API and returns the response.
 // The provided context is used for request cancellation and timeouts.
+// Request parameters are sent as URL query parameters.
 // A 401 response yields ErrAuthFailed; other non-2xx responses and
 // network errors yield ErrSyncFailed wrapping the underlying cause.
 func (c *Client) DoSync(ctx context.Context, req SyncRequest) (*SyncResponse, error) {
-	body, err := json.Marshal(req)
+	u, err := url.Parse(c.endpoint)
 	if err != nil {
-		return nil, fmt.Errorf("%w: encoding request: %v", ErrSyncFailed, err)
+		return nil, fmt.Errorf("%w: parsing endpoint: %v", ErrSyncFailed, err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, io.NopCloser(bytes.NewReader(body)))
+	params := url.Values{}
+	params.Set("sync_token", req.SyncToken)
+
+	resourceTypesJSON, err := json.Marshal(req.ResourceTypes)
+	if err != nil {
+		return nil, fmt.Errorf("%w: encoding resource_types: %v", ErrSyncFailed, err)
+	}
+	params.Set("resource_types", string(resourceTypesJSON))
+
+	if len(req.Commands) > 0 {
+		commandsJSON, err := json.Marshal(req.Commands)
+		if err != nil {
+			return nil, fmt.Errorf("%w: encoding commands: %v", ErrSyncFailed, err)
+		}
+		params.Set("commands", string(commandsJSON))
+	}
+	u.RawQuery = params.Encode()
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("%w: building request: %v", ErrSyncFailed, err)
 	}
-	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	httpReq.Header.Set("Authorization", "Bearer "+c.token)
 
 	resp, err := c.httpClient.Do(httpReq)
